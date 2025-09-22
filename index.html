@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Clock · Weather · Aura Pro</title>
+<meta name="theme-color" content="#0a0f14"/>
+
+<!-- Tipografías -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Kalnia:wght@600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0a0f14; --bg2:#0e1620;
+    --ink:#eaf2ff; --muted:#a3b2c9;
+    --glass:rgba(10,16,24,.55); --glass2:rgba(10,16,24,.78);
+    --card:#0f1824; --stroke:rgba(255,255,255,.10);
+    --accent:#5b8ecf; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+    --r:22px; --shadow:0 24px 70px rgba(0,0,0,.45);
+    --kenburns: 38s;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    background: radial-gradient(1200px 800px at 10% 10%, #0f2238 0%, transparent 60%),
+                radial-gradient(1200px 800px at 90% 10%, #16243a 0%, transparent 60%),
+                linear-gradient(180deg,var(--bg),var(--bg2));
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    overflow:hidden; cursor:default;
+  }
+
+  /* AURA animada */
+  .aura{
+    position:fixed; inset:-15vmax; z-index:0; pointer-events:none; filter:saturate(1.05);
+    background:
+      radial-gradient(50vmax 50vmax at 15% 25%, rgba(91,142,207,.18), transparent 60%),
+      radial-gradient(55vmax 55vmax at 85% 15%, rgba(255,42,32,.10), transparent 62%),
+      radial-gradient(60vmax 60vmax at 80% 85%, rgba(35,197,94,.10), transparent 65%),
+      radial-gradient(55vmax 55vmax at 18% 80%, rgba(255,188,73,.10), transparent 65%);
+    animation: hue 28s ease-in-out infinite alternate;
+  }
+  @keyframes hue{
+    0%{filter:hue-rotate(0deg) blur(0px)}
+    50%{filter:hue-rotate(14deg) blur(1px)}
+    100%{filter:hue-rotate(28deg) blur(0px)}
+  }
+
+  /* Fondo slideshow (Ken Burns) */
+  .stage{ position:fixed; inset:0; z-index:-1; overflow:hidden; }
+  .slide{
+    position:absolute; inset:-2%; background:center/cover no-repeat;
+    opacity:0; transform: scale(1.05);
+    transition: opacity 1.2s ease, transform var(--kenburns) ease;
+    filter: brightness(.85) saturate(1.05);
+    will-change:opacity,transform;
+  }
+  .slide.show{ opacity:1; transform: scale(1.15) }
+
+  /* Layout */
+  .wrap{
+    height:100%; display:grid; align-items:center; justify-items:center; padding:3vmin;
+  }
+  .panel{
+    width:min(1200px,96vw);
+    background:linear-gradient(180deg,var(--glass),var(--glass2));
+    border:1px solid var(--stroke);
+    border-radius:var(--r); box-shadow:var(--shadow);
+    padding:26px 26px 18px; backdrop-filter: blur(7px);
+  }
+  .top{
+    display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center;
+    margin-bottom:12px;
+  }
+  .loc{font-weight:700; letter-spacing:.35px}
+  .status{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:14px}
+  .dot{width:10px;height:10px;border-radius:50%;background:#6b7280}
+  .dot.live{background:var(--ok); box-shadow:0 0 0 3px rgba(34,197,94,.22)}
+
+  .grid{
+    display:grid; gap:20px;
+    grid-template-columns: 1.4fr 1fr;
+  }
+  @media (max-width: 980px){ .grid{ grid-template-columns:1fr } }
+
+  /* Reloj */
+  .clock{ display:flex; flex-direction:column; gap:6px }
+  .time{
+    font-size: clamp(58px, 11vw, 132px);
+    line-height:1; font-weight:800; letter-spacing:1.5px;
+  }
+  .time .sec{ opacity:.5; font-weight:600; font-size:.46em; margin-left:.25em }
+  .date{ font-size: clamp(16px,2.4vw,22px); color:var(--muted) }
+
+  /* Clima */
+  .card{ background:var(--card); border:1px solid var(--stroke); border-radius:16px; padding:16px }
+  .card h3{ margin:0 0 10px; font-size:16px; color:#dbe9ff; letter-spacing:.3px; font-weight:600 }
+  .wx-now{ display:flex; align-items:center; gap:14px }
+  .wx-temp{ font-size: clamp(38px, 6.4vw, 62px); font-weight:800; letter-spacing:.3px }
+  .wx-desc{ color:#d6e3fb }
+  .wx-icon{ font-size:34px; line-height:1.1; opacity:.95 }
+  .wx-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px }
+  .wx-box{ background:#0b121a; border:1px solid var(--stroke); border-radius:12px; padding:10px }
+  .k{font-size:12px; color:var(--muted)} .v{font-weight:700}
+
+  /* Footer + controles */
+  .foot{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; color:var(--muted); font-size:13px; flex-wrap:wrap }
+  .controls{ display:flex; gap:8px; flex-wrap:wrap }
+  .btn{
+    appearance:none; border:1px solid var(--stroke); background:#0f1622; color:var(--ink);
+    padding:12px 14px; border-radius:14px; font-weight:800; cursor:pointer;
+    transition:.15s transform,.2s box-shadow; font-size:16px; min-width:180px;
+  }
+  .btn:hover, .btn:focus{ box-shadow:0 0 0 2px rgba(91,142,207,.28) inset; outline:none }
+  .btn:active{ transform:translateY(1px) }
+
+  .kbd{background:#101b2c; border:1px solid var(--stroke); padding:2px 6px; border-radius:6px; font-weight:700}
+
+  /* Panel de ajustes */
+  .settings{
+    position:fixed; right:18px; bottom:18px; width:360px; max-width:calc(100vw - 36px);
+    background:linear-gradient(180deg,var(--glass),var(--glass2));
+    border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow);
+    padding:14px; display:none; backdrop-filter: blur(7px); z-index:10;
+  }
+  .settings.show{ display:block }
+  .set-row{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; padding:6px 2px }
+  .set-row input[type="range"]{ width:180px }
+  .seg{ font-size:12px; color:var(--muted); margin-top:2px }
+  .select, .toggle{
+    background:#0f1622; border:1px solid var(--stroke); color:var(--ink); border-radius:10px; padding:8px 10px; font-weight:700;
+  }
+
+  /* Temas */
+  .theme-neon{ --accent:#ff2a20; --bg:#080b0f; --bg2:#0b0f14 }
+  .theme-warm{ --accent:#ffbc49; --bg:#0c0a08; --bg2:#16110a }
+</style>
+</head>
+<body>
+  <div class="aura"></div>
+
+  <!-- Fondo slideshow -->
+  <div class="stage" aria-hidden="true">
+    <div id="s0" class="slide"></div>
+    <div id="s1" class="slide"></div>
+  </div>
+
+  <main class="wrap">
+    <section class="panel" role="region" aria-label="Reloj y clima">
+      <header class="top">
+        <div class="loc" id="loc">Ubicación</div>
+        <div class="status" aria-live="polite">
+          <span class="dot" id="dot"></span>
+          <span id="stat">Cargando clima…</span>
+        </div>
+      </header>
+
+      <div class="grid">
+        <!-- Reloj -->
+        <section class="clock" aria-label="Hora y fecha">
+          <div class="time" id="hora">--:--<span class="sec">--</span></div>
+          <div class="date" id="fecha">—</div>
+        </section>
+
+        <!-- Clima -->
+        <aside class="card" aria-label="Clima actual">
+          <h3>Clima</h3>
+          <div class="wx-now">
+            <div class="wx-temp"><span id="tActual">--</span>°</div>
+            <div class="wx-desc">
+              <div id="wxText">—</div>
+              <div class="wx-icon" id="wxEmoji" aria-hidden="true">—</div>
+            </div>
+          </div>
+          <div class="wx-grid">
+            <div class="wx-box"><div class="k">Mín</div><div class="v" id="tMin">--°</div></div>
+            <div class="wx-box"><div class="k">Máx</div><div class="v" id="tMax">--°</div></div>
+            <div class="wx-box"><div class="k">Viento</div><div class="v" id="viento">-- km/h</div></div>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="foot">
+        <div>Fondos Ken Burns según hora/tiempo · Teclas: <span class="kbd">Espacio</span> pausa · <span class="kbd">→</span> siguiente · <span class="kbd">F</span> full</div>
+        <div class="controls">
+          <button class="btn" id="btnPause" tabindex="0">⏯ Pausa / Reanudar</button>
+          <button class="btn" id="btnNext" tabindex="0">→ Siguiente fondo</button>
+          <button class="btn" id="btnFull" tabindex="0">⛶ Pantalla completa</button>
+          <button class="btn" id="btnSettings" tabindex="0">⚙️ Ajustes</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Panel de ajustes -->
+  <aside class="settings" id="settings" role="dialog" aria-label="Ajustes">
+    <div class="set-row">
+      <div>
+        <div><b>Tema</b></div>
+        <div class="seg">Afecta colores y contraste</div>
+      </div>
+      <select id="selTheme" class="select">
+        <option value="default">Clásico</option>
+        <option value="neon">Neón</option>
+        <option value="warm">Cálido</option>
+      </select>
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div><b>Formato hora</b></div>
+        <div class="seg">12 h / 24 h</div>
+      </div>
+      <select id="selHour" class="select">
+        <option value="24">24 h</option>
+        <option value="12">12 h</option>
+      </select>
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div><b>Unidades</b></div>
+        <div class="seg">Temperatura</div>
+      </div>
+      <select id="selUnits" class="select">
+        <option value="C">°C</option>
+        <option value="F">°F</option>
+      </select>
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div><b>Velocidad fondo</b></div>
+        <div class="seg">Más bajo = más lento</div>
+      </div>
+      <input type="range" id="rngSpeed" min="20" max="80" step="2" value="38"/>
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div><b>Ocultar puntero</b></div>
+        <div class="seg">Tras 5 s sin mover</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="chkCursor" checked/> Sí</label>
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div><b>Fijar Santiago, RM</b></div>
+        <div class="seg">Usar -33.45, -70.66 siempre (sin geolocalización)</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="chkFixedLoc"/> Sí</label>
+    </div>
+  </aside>
+
+<script>
+/* ========================== CONFIG ========================== */
+const IMAGE_SET = {
+  day_clear: [
+    "https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1920&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1920&auto=format&fit=crop"
+  ],
+  day_cloudy: [
+    "https://images.unsplash.com/photo-1499346030926-9a72daac6c63?q=80&w=1920&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1458891216473-4f26bb4eb40e?q=80&w=1920&auto=format&fit=crop"
+  ],
+  rain: [
+    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1920&auto=format&fit=crop"
+  ],
+  night_clear: [
+    "https://images.unsplash.com/photo-1470770903676-69b98201ea1c?q=80&w=1920&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1920&auto=format&fit=crop"
+  ],
+  night_cloudy: [
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1920&auto=format&fit=crop&sat=-20"
+  ]
+};
+const SLIDE_MS = 28_000; // autoslide
+/* ============================================================ */
+
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,'0');
+const params = new URLSearchParams(location.search);
+
+/* -------- Slideshow -------- */
+let slideTimer=null, paused=false, slideIdx=0, active=0, pool=IMAGE_SET.day_clear;
+const slides=[$("#s0"),$("#s1")];
+function setSlide(url){
+  const next=1-active;
+  slides[next].style.backgroundImage=`url('${url}')`;
+  slides[next].classList.add('show');
+  slides[active].classList.remove('show');
+  active = next;
+}
+function nextSlide(force=false){
+  if(paused && !force) return;
+  slideIdx=(slideIdx+1)%pool.length;
+  setSlide(pool[slideIdx]);
+}
+function startShow(){ clearInterval(slideTimer); slideTimer=setInterval(nextSlide, SLIDE_MS); }
+
+/* -------- Fondo según hora/clima -------- */
+function choosePool({hour, code}){
+  const isNight = hour >= 20 || hour < 6;
+  const rainy = [51,53,55,61,63,65,66,67,80,81,82,95,96,99].includes(code);
+  const cloudy = [2,3,45,48].includes(code);
+  if(isNight && (rainy||cloudy)) return IMAGE_SET.night_cloudy;
+  if(isNight) return IMAGE_SET.night_clear;
+  if(rainy) return IMAGE_SET.rain;
+  if(cloudy) return IMAGE_SET.day_cloudy;
+  return IMAGE_SET.day_clear;
+}
+
+/* -------- Reloj -------- */
+let hourFormat = localStorage.getItem("hourFormat") || "24";
+function tick(){
+  const d=new Date();
+  let h=d.getHours(), ampm="";
+  if(hourFormat==="12"){ ampm = h>=12?"PM":"AM"; h = (h%12)||12; }
+  $("#hora").innerHTML = `${pad(h)}:${pad(d.getMinutes())}<span class="sec">${pad(d.getSeconds())}${ampm?(" "+ampm):""}</span>`;
+  const dias=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  $("#fecha").textContent = `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]}`;
+  setTimeout(tick, 1000);
+}
+tick();
+
+/* -------- Geolocalización + Clima -------- */
+let unit = localStorage.getItem("unit") || "C";
+function toUnit(c){ return unit==="F" ? Math.round(c*9/5+32) : Math.round(c); }
+function unitLabel(){ return unit==="F" ? "°F" : "°C"; }
+
+const SCL = { lat:-33.45, lon:-70.66, name:"Santiago, Región Metropolitana" };
+const FIXED_DEFAULT = (localStorage.getItem("fixedLoc") || "0") === "1";
+const URL_FIXED = params.get("fixed")==="1";
+
+async function getCoords(){
+  if (URL_FIXED || FIXED_DEFAULT) return {lat:SCL.lat, lon:SCL.lon, fixed:true};
+  try{
+    return await new Promise((res,rej)=>{
+      navigator.geolocation.getCurrentPosition(
+        p=>res({lat:p.coords.latitude, lon:p.coords.longitude, fixed:false}),
+        ()=>res({lat:SCL.lat, lon:SCL.lon, fixed:true}),
+        {timeout:6000}
+      );
+    });
+  }catch{ return {lat:SCL.lat, lon:SCL.lon, fixed:true} }
+}
+function wxDesc(code){
+  const m={0:"Despejado",1:"Mayormente despejado",2:"Parcial nublado",3:"Nublado",45:"Niebla",48:"Escarcha",
+           51:"Llovizna ligera",53:"Llovizna",55:"Llovizna fuerte",61:"Lluvia ligera",63:"Lluvia",65:"Lluvia fuerte",
+           66:"Aguanieve ligera",67:"Aguanieve",71:"Nieve",73:"Nieve moderada",75:"Nieve intensa",80:"Chubascos",
+           81:"Chubascos fuertes",82:"Chubascos violentos",95:"Tormenta",96:"Tormenta c/granizo",99:"Tormenta fuerte"};
+  return m[code]||"Tiempo";
+}
+function wxEmoji(code){
+  if([0,1].includes(code)) return "☀️";
+  if([2,3,45,48].includes(code)) return "☁️";
+  if([51,53,55,61,63,65,66,67,80,81,82].includes(code)) return "🌧️";
+  if([95,96,99].includes(code)) return "⛈️";
+  if([71,73,75].includes(code)) return "❄️";
+  return "🌤️";
+}
+async function reverseGeocode(lat,lon,forceSCL=false){
+  if (forceSCL) return SCL.name;
+  try{
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=es`);
+    const d = await r.json(); const p=d?.results?.[0];
+    if(!p) return `Lat ${lat.toFixed(2)}, Lon ${lon.toFixed(2)}`;
+    const city = p.city || p.name || p.locality || ""; const admin = p.admin1 || p.country || "";
+    return [city,admin].filter(Boolean).join(", ");
+  }catch{ return `Lat ${lat.toFixed(2)}, Lon ${lon.toFixed(2)}` }
+}
+async function cargarClima(){
+  const {lat, lon, fixed} = await getCoords();
+  $("#loc").textContent = await reverseGeocode(lat, lon, fixed);
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto`;
+  try{
+    const r = await fetch(url, {cache:"no-store"});
+    const d = await r.json();
+    const now=d.current;
+    $("#tActual").textContent = toUnit(now.temperature_2m);
+    $("#viento").textContent = Math.round(now.wind_speed_10m) + " km/h";
+    $("#tMin").textContent = toUnit(d.daily.temperature_2m_min[0]) + unitLabel();
+    $("#tMax").textContent = toUnit(d.daily.temperature_2m_max[0]) + unitLabel();
+    $("#wxText").textContent = wxDesc(now.weather_code);
+    $("#wxEmoji").textContent = wxEmoji(now.weather_code);
+    $("#stat").textContent = "Clima actualizado";
+    $("#dot").classList.add("live");
+
+    const h=new Date().getHours();
+    pool = choosePool({hour:h, code:now.weather_code});
+    slideIdx=0; setSlide(pool[slideIdx]);
+  }catch(e){
+    $("#stat").textContent="Clima no disponible";
+    $("#dot").classList.remove("live");
+  }finally{
+    setTimeout(cargarClima, 15*60*1000);
+  }
+}
+cargarClima();
+startShow();
+
+/* -------- Controles/UX -------- */
+const btnPause = $("#btnPause");
+const btnNext  = $("#btnNext");
+const btnFull  = $("#btnFull");
+const btnSettings = $("#btnSettings");
+
+btnPause.addEventListener("click", ()=>{ paused = !paused; if(!paused) nextSlide(true); btnPause.textContent = paused ? "▶️ Reanudar" : "⏸ Pausa"; });
+btnNext.addEventListener("click", ()=> nextSlide(true));
+btnFull.addEventListener("click", ()=>{
+  if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>{}); }
+  else{ document.exitFullscreen().catch(()=>{}); }
+});
+btnSettings.addEventListener("click", ()=> $("#settings").classList.toggle("show"));
+
+window.addEventListener("keydown", (e)=>{
+  if(e.key===" "){ e.preventDefault(); btnPause.click(); }
+  if(e.key==="ArrowRight"){ e.preventDefault(); btnNext.click(); }
+  if(e.key.toLowerCase()==="f"){ e.preventDefault(); btnFull.click(); }
+});
+
+/* Ocultar puntero tras 5s */
+let hideTimer=null, hideCursor = (localStorage.getItem("hideCursor") || "1") === "1";
+function armCursorAutoHide(){
+  if(!hideCursor){ document.body.style.cursor="default"; return; }
+  const reset=()=>{
+    document.body.style.cursor="default";
+    clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=> document.body.style.cursor="none", 5000);
+  };
+  ["mousemove","mousedown","keydown","touchstart"].forEach(ev=>window.addEventListener(ev, reset));
+  reset();
+}
+armCursorAutoHide();
+
+/* -------- Ajustes persistentes -------- */
+const selTheme = $("#selTheme"), selHour=$("#selHour"), selUnits=$("#selUnits"), rngSpeed=$("#rngSpeed"), chkCursor=$("#chkCursor"), chkFixedLoc=$("#chkFixedLoc");
+
+function applyTheme(t){
+  document.body.classList.remove("theme-neon","theme-warm");
+  if(t==="neon") document.body.classList.add("theme-neon");
+  if(t==="warm") document.body.classList.add("theme-warm");
+}
+function applySpeed(v){ document.documentElement.style.setProperty("--kenburns", `${v}s`); }
+
+selTheme.value = localStorage.getItem("theme") || "default";
+applyTheme(selTheme.value);
+selTheme.addEventListener("change", ()=>{ localStorage.setItem("theme", selTheme.value); applyTheme(selTheme.value); });
+
+selHour.value = hourFormat;
+selHour.addEventListener("change", ()=>{ hourFormat = selHour.value; localStorage.setItem("hourFormat", hourFormat); });
+
+selUnits.value = unit;
+selUnits.addEventListener("change", ()=>{ unit = selUnits.value; localStorage.setItem("unit", unit); cargarClima(); });
+
+rngSpeed.value = Number(localStorage.getItem("speed") || 38);
+applySpeed(rngSpeed.value);
+rngSpeed.addEventListener("input", ()=>{ localStorage.setItem("speed", rngSpeed.value); applySpeed(rngSpeed.value); });
+
+chkCursor.checked = hideCursor;
+chkCursor.addEventListener("change", ()=>{ hideCursor = chkCursor.checked; localStorage.setItem("hideCursor", hideCursor ? "1":"0"); armCursorAutoHide(); });
+
+/* Fijar Santiago (persistente) + URL param override */
+chkFixedLoc.checked = FIXED_DEFAULT || URL_FIXED;
+chkFixedLoc.addEventListener("change", ()=>{
+  localStorage.setItem("fixedLoc", chkFixedLoc.checked ? "1":"0");
+  cargarClima();
+});
+
+/* -------- Wake Lock (evitar que la pantalla se apague si la TV lo soporta) -------- */
+let wakeLock = null;
+async function requestWakeLock(){
+  try{
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{/* noop */});
+    }
+  }catch(e){ /* algunas TVs no lo soportan */ }
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && wakeLock) requestWakeLock(); });
+
+/* -------- Auto Fullscreen si ?fs=1 -------- */
+function tryAutoFullscreen(){
+  if (params.get('fs')==='1') {
+    // Muchos navegadores piden gesto del usuario; intentamos igual:
+    btnFull.click();
+  }
+}
+
+/* Inicio: solicitar WakeLock y fullscreen si corresponde */
+window.addEventListener('load', ()=>{
+  requestWakeLock();
+  tryAutoFullscreen();
+});
+</script>
+</body>
+</html>
